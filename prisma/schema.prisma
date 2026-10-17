@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  SUB_AGENT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          Role      @default(SUB_AGENT)
+  password      String    @default("password123")
+  phone         String?
+  agentCode     String?   @unique
+  status        String    @default("ACTIVE")
+  
+  // Agent <-> Sub-Agent Hierarchy Relationship
+  parentAgentId String?
+  parentAgent   User?     @relation("AgentToSubAgents", fields: [parentAgentId], references: [id], onDelete: SetNull)
+  subAgents     User[]    @relation("AgentToSubAgents")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  posts         Post[]
+
+  @@map("users")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model Application {
+  id              String   @id @default(cuid())
+  type            String   // GENERAL_MARRIAGE, MAYRA, NETAR, FINANCIAL_HELP
+  appNo           String   @unique
+  applicantName   String
+  fatherName      String
+  motherName      String?
+  gender          String?
+  dob             String?
+  age             Int
+  aadhar          String?
+  gotra           String?
+  mobile          String?
+  village         String?
+  pinCode         String?
+  tehsil          String?
+  district        String?
+  state           String?
+  nomineeName     String?
+  nomineeRelation String?
+  workerName      String?
+  affidavit       String?
+  
+  // E-Pin & Fee binding according to age
+  epinCode        String
+  epinCategory    String   // 100, 200, 300
+  epinAmount      Float
+  applicationFee  Float    // 5100, 7100, 9100, 10000, 11000
+  paymentMode     String   @default("E-Pin")
+  paymentDate     String?
+  paymentStatus   String   @default("COMPLETED")
+  
+  status          String   @default("PENDING") // PENDING, VERIFIED, APPROVED, REJECTED
+  remarks         String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("applications")
+}
+
+model Epin {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  category          String   // 100, 200, 300
+  amount            Float
+  assignedTo        String   @default("केंद्रीय भंडार (Central Pool)")
+  assignedAgentCode String   @default("CENTRAL")
+  status            String   @default("ACTIVE") // ACTIVE, USED
+  usedDate          String?
+  usedBy            String?
+  usedInAppNo       String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("epins")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  txnId       String   @unique
+  type        String   // INWARD, OUTWARD
+  title       String
+  amount      Float
+  category    String?
+  mode        String?
+  date        String
+  status      String   @default("COMPLETED")
+  agentCode   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("payments")
+}
